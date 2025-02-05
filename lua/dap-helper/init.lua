@@ -73,23 +73,38 @@ function M.setup()
          vim.notify("Error resetting the configuration: " .. str, vim.log.levels.ERROR)
       end
    end, {})
+  vim.api.nvim_create_autocmd("BufUnload", {
+    pattern = "*",
+    callback = function(opts)
+        if internals.is_invalid_filename(opts.buf) then
+          return
+        end
 
-   vim.api.nvim_create_autocmd("BufUnload", {
-      pattern = "*",
-      callback = function(opts)
-         if internals.is_invalid_filename(opts.buf) then
-            return
-         end
-         internals.save_watches()
-         if vim.api.nvim_get_option_value("modified", { buf = opts.buf }) then
-            return
-         end
-         -- Only save breakpoints if buffer is unmodified to make sure we save no
-         -- breakpoints that reference non-existing lines
-         internals.save_breakpoints()
-      end,
-      group = daic0r_dap_helper
-   })
+        -- Ensure we are only processing buffers related to dap-helper
+        local bufname = vim.api.nvim_buf_get_name(opts.buf)
+        if not bufname or bufname == "" then
+          return
+        end
+
+        -- Prevent error: check if internals.save_watches() is valid before calling
+        if internals.save_watches then
+          internals.save_watches()
+        end
+
+        -- Ensure modified buffers do not save breakpoints
+        local modified = vim.api.nvim_get_option_value("modified", { buf = opts.buf })
+        if modified then
+          return
+        end
+
+        -- Save breakpoints only for relevant buffers
+        if internals.save_breakpoints then
+          internals.save_breakpoints()
+        end
+    end,
+    group = daic0r_dap_helper
+  })
+
    vim.api.nvim_create_autocmd("BufReadPost", {
       pattern = "*",
       callback = function(opts)
