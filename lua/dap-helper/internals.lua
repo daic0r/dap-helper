@@ -36,12 +36,16 @@ end
 
 local function load_json_file(filename)
    local f = io.open(filename, "r")
-   local data = {}
-   if f then
-      local content = f:read("*a")
-      f:close()
-      _, data = pcall(vim.json.decode, content, { object = true, array = true })
-      assert(data, "Could not decode json")
+   if not f then
+      return {} -- Return empty table if file can't be opened
+   end
+   local content = f:read("*a")
+   f:close()
+
+   local success, data = pcall(vim.json.decode, content, { object = true, array = true })
+   if not success or type(data) ~= "table" then
+      vim.notify("Error decoding JSON from: " .. filename, vim.log.levels.ERROR)
+      return {} -- Return empty table if decoding fails
    end
    return data
 end
